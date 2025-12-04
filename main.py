@@ -74,9 +74,20 @@ def cross_entropy_loss(y_pred, y_true): # loss函式，計算與預測值的落�
 
 def relu(x):
     return np.maximum(0, x)
+def d_relu(x):
+    return np.where(x > 0, 1, 0)
 
 def sigmoid(x):
     return 1/ (1 + np.exp(-1))
+
+def d_sigmoid(x):
+    return sigmoid(x) * (1 - sigmoid(x))
+
+def tanh(x):
+    return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+
+def d_tanh(x):
+    return 1 - tanh(x)**2
 
 def predict(X, W, b):   # 用來將預測好的W和b對測試集做預測
     z = X @ W + b       # 得出每row的資料對k個類別的logits
@@ -106,6 +117,9 @@ b3 = np.zeros(output_dim) # 最初設成0，讓資料不偏重任何一類
 learning_rate = 0.001   # 設定 學習率
 maxEpochs = 500         # 設定 epoch 
 batch_size = 64         # 設定 每個batch的大小 
+patience = 15
+no_improve = 0
+best_val_loss = INF
 
 # 用於記錄訓練過程
 train_losses = []       # 紀錄 訓練loss
@@ -141,23 +155,38 @@ for epoch in range(maxEpochs):   # 跑每個epoch，總告跑maxEpoch次
         # ----- Backward -----
         # Output layer error
         batch_loss_3 = cross_entropy_loss(a3, y_batch) # 此次batch的平均loss
+        if(batch_loss_3 < best_val_loss):
+            batch_loss_3 = best_val_loss
+            no_improve = 0
+        else:
+            no_improve += 1
+
+        if(no_improve >= patience):
+            break
+            
         epoch_loss += batch_loss_3    # 累積到epoch的總loss量
         num_batches += 1    # 批次數+1
         
         # Hidden layer errors
-        batch_loss_2 = W3.T
+        batch_loss_3 = np.dot((W4.T @ batch_loss_4), d_relu(n3))
+        batch_loss_2 = np.dot((W3.T @ batch_loss_3), d_relu(n2))
+        batch_loss_1 = np.dot((W2.T @ batch_loss_2), d_relu(n1))
 
-
-        # 梯度計算
-        dz = y_batch - a3  # 誤差 = y - y_hat，shape: (batch_size, num_classes)
-        # 將X轉置與dz做矩陣乘法，再除以batch長度
-        # shape = (input_dim, batch_size) @ (batch_size, num_classes) = (input_dim, num_classes)
-        dW = X_batch.T @ dz / len(X_batch) 
-        db = np.mean(dz, axis=0)  # 1/B sigma(dz)，shape: (num_classes,)
+        # # 梯度計算
+        # dz = y_batch - a3  # 誤差 = y - y_hat，shape: (batch_size, num_classes)
+        # # 將X轉置與dz做矩陣乘法，再除以batch長度
+        # # shape = (input_dim, batch_size) @ (batch_size, num_classes) = (input_dim, num_classes)
+        # dW = X_batch.T @ dz / len(X_batch) 
+        # db = np.mean(dz, axis=0)  # 1/B sigma(dz)，shape: (num_classes,)
         
-        # 更新參數
-        W = W + learning_rate * dW
-        b = b + learning_rate * db
+        # Update weights and biases 更新參數
+        W3 = W3 + learning_rate * batch_loss_3 * a2.T
+        b3 = b3 + learning_rate * a3.T
+        W2 = W2 + learning_rate * batch_loss_2 * a1.T
+        b2 = b2 + learning_rate * a2.T
+        W1 = W1 + learning_rate * batch_loss_1 * a0.T
+        b1 = b1 + learning_rate * a1.T
+
     # 跑完所有batch
     # 計算平均損失
     avg_train_loss = epoch_loss / num_batches
@@ -201,7 +230,7 @@ plt.plot(epochs_range, train_accuracies, color="Blue", label='Train accuracy') #
 plt.plot(epochs_range, val_accuracies, color='Orange', label='Validation accuracy') # 繪製資料
 plt.xlabel('Epoch') # 設定x軸文字
 plt.ylabel('Accuracy') # 設定y軸文字
-plt.title('GroupA_Accuracy') # 圖片標題
+plt.title('GroupB_Accuracy') # 圖片標題
 plt.legend(loc="lower right") # label 顯示位置
 plt.savefig('output/output_accuracy.png') # 儲存圖片
 
@@ -211,7 +240,7 @@ plt.plot(epochs_range, train_losses, color='Blue', label='Train loss') # 繪製�
 plt.plot(epochs_range, val_losses, color='Orange', label='Validation loss') # 繪製資料
 plt.xlabel('Epoch') # 設定x軸文字
 plt.ylabel('Loss') # 設定y軸文字
-plt.title('GroupA_Loss') # 圖片標題
+plt.title('GroupB_Loss') # 圖片標題
 plt.legend(loc="upper right") # label 顯示位置
 plt.savefig('output/output_loss.png') # 儲存圖片
 plt.show() # 顯示圖片
@@ -219,7 +248,7 @@ plt.clf()  # 清除圖片
 
 # -----載入測試資料並預測-----
 # 使用loadtxt載入資料，以逗號分隔，型態是np.float32，跳過標籤row1
-test_file = np.loadtxt("Group_A_test.csv", delimiter=",", dtype=np.float32, skiprows=1) 
+test_file = np.loadtxt("Group_B_test.csv", delimiter=",", dtype=np.float32, skiprows=1) 
 # 取出x像素值(column 1~最後)，並將資料正規化：除以255.0，將範圍縮到[0,1]
 X_test = test_file / 255.0 
 
