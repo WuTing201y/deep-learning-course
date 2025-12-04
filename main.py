@@ -119,7 +119,7 @@ maxEpochs = 500         # 設定 epoch
 batch_size = 64         # 設定 每個batch的大小 
 patience = 15
 no_improve = 0
-best_val_loss = INF
+best_val_loss = float('inf')
 
 # 用於記錄訓練過程
 train_losses = []       # 紀錄 訓練loss
@@ -163,7 +163,7 @@ for epoch in range(maxEpochs):   # 跑每個epoch，總告跑maxEpoch次
 
         if(no_improve >= patience):
             break
-            
+
         epoch_loss += batch_loss_3    # 累積到epoch的總loss量
         num_batches += 1    # 批次數+1
         
